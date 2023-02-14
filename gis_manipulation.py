@@ -10,24 +10,10 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 from tqdm import tqdm
-from shapely.geometry import MultiPoint, Polygon
-from shapely.ops import unary_union
-from typing import Tuple, List
+from shapely.geometry import Polygon
+from typing import Tuple
 import os
 from warnings import warn
-
-def obs2polygon(st_grilla, sf_species, output_fn):
-    especies = sf_species['species'].unique()
-    for i, s in enumerate(especies):
-        print(f"{i + 1}/{len(especies)}  process completed    working on species: {s}")
-        obs = sf_species[sf_species['species'] == s]
-        mat = np.column_stack((obs['geometry'].x, obs['geometry'].y))
-        mat = MultiPoint(mat)
-        obs = mat.intersection(st_grilla)
-        st_grilla = st_grilla.difference(obs)
-    precenses = st_grilla.drop(columns=['geometry'])
-    precenses = precenses.astype(np.float32)
-    precenses.to_csv(output_fn, sep=' ')
 
 
 def geobox(corners : Tuple[float, float, float, float]) -> gpd.GeoSeries: 
@@ -49,7 +35,8 @@ def contains(grid: gpd.GeoDataFrame, points: gpd.GeoDataFrame) -> pd.DataFrame:
     
 def obs_to_grid(grid: gpd.GeoDataFrame, obs: gpd.GeoDataFrame, min_obs : int = 30,
                 write: bool = False, out_fn: str = 'grid_container.parquet') -> pd.DataFrame: 
-    species = obs['species'].unique()
+    species = (obs.groupby('species').count() > min_obs).index
+    species = list(species)
     for s in tqdm(species, desc = 'Species\' observation grided', unit = '', ncols = 100):        
         # Select observations of a specific species 
         aux = obs.query('species == @s')
@@ -62,10 +49,26 @@ def obs_to_grid(grid: gpd.GeoDataFrame, obs: gpd.GeoDataFrame, min_obs : int = 3
     grid = pd.concat([id, grid], axis = 1 )
     
     if write:
-        grid.to_parquet(out_fn)
+        grid.to_parquet(IN_FOLDER, out_fn)
     return grid
 
 def main(): 
+    IN_FOLDER = os.path.join('data', 'Valpo')
+    
+    mammals_fn = os.path.join(IN_FOLDER, 'mammals.shp')
+    mammals = gpd.read_file(mammals_fn)[['spp', 'geometry']]
+    
+    birds_fn = os.path.join(IN_FOLDER, 'birds.shp')
+    birds = gpd.read_file(birds_fn)[['spp', 'geometry']]
+    
+    obs = pd.concat([mammals, birds], ignore_index=True)
+    obs = obs.rename(columns = {'spp': 'species'})
+    del birds, mammals, birds_fn, mammals_fn
+    
+    grid_fn =  os.path.join(IN_FOLDER, 'grid.shp')      
+    grid = gpd.read_file(grid_fn)[['id','geometry']].head(10000)
+    
+    grid = obs_to_grid(grid, obs, write = True)
     
     
 if __name__ == '__main__': 
