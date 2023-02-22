@@ -89,7 +89,7 @@ def main():
     
     mammals_fn = os.path.join(IN_FOLDER, 'mammals.shp')
     mammals = gpd.read_file(mammals_fn)[['spp', 'geometry']]
-    f
+    
     birds_fn = os.path.join(IN_FOLDER, 'birds.shp')
     birds = gpd.read_file(birds_fn)[['spp', 'geometry']]
     

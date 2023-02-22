@@ -6,107 +6,140 @@ Created on Tue Feb 14 17:10:54 2023
 @author: rodrigo
 """
 
-import polytope as pc 
-from sklearn.covariance import EllipticEnvelope, MinCovDet
-from scipy.spatial import ConvexHull
 from pypoman.duality import compute_polytope_vertices
+from tools import COV, MCD, plot2D_convexhull, plot3D_convexhull, plot3D_multy_convexhulls
+from scipy.spatial import ConvexHull
 import pandas as pd
-import cvxpy as cp
 import numpy as np
-from matplotlib.path import Path
 import matplotlib.pyplot as plt
 from numpy.typing import ArrayLike 
-from typing import Tuple, List
-import cdd as pcdd
+from warnings import warn
 import os
+from pprint import pprint
 
 class CHE:
-    def __init__(self, convex_hull = None):
+    def __init__(self, 
+                 data : pd.DataFrame | ArrayLike = None, 
+                 convex_hull = None):
+        
         self.convex_hull = convex_hull
+        self.data = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
+        
         if convex_hull: 
-            self.A = convex_hull.equations 
+            d = convex_hull.vertices.shape[1]
+            self.A = convex_hull.equations[:,:d]
+            self.b = -self.convex_hull.equations[:,d]
             self.volume =  convex_hull.volume
             self.vertices = convex_hull.vertices
-            
-    def ch(self, vertices): 
-        n = vertices.shape[1]
-        self.convex_hull = ConvexHull(vertices)
+
+    def ch(self, list_var : list[str] = None): 
+        points = self.data if list_var == None else self.data[list_var]
         
-        #H-representation: Ax <= b
-        self.A = self.convex_hull.equations[:,:n]
-        self.b = -self.convex_hull.equations[:,n]
+        points = points.to_numpy()
+        d = points.shape[1]
+        
+        self.convex_hull = ConvexHull(points)
+        
+        # H-representation: Ax <= b
+        self.A = self.convex_hull.equations[:,:d]
+        self.b = -self.convex_hull.equations[:,d]
         
         # V-representation
-        self.vertices = vertices
+        self.vertices = points[self.convex_hull.vertices]
         
+        # get Volume        
         self.volume = self.convex_hull.volume
-        self.data = vertices
+        
 
-    def cov(self, data : pd.DataFrame | ArrayLike, 
-            p = 0.95, cols = ['all']) -> None:
+    def cov(self, 
+            p = 0.95, 
+            list_var : list[str] = None) -> None:
         
-        model1 = EllipticEnvelope(contamination = 1-p) 
         # fit model
-        points = data[['PC1', 'PC2']].to_numpy()
-        model1.fit(points)
+        points = self.data if list_var == None else self.data[list_var]
+        points = points.to_numpy()
+        d = points.shape[1]
         
-        pred1 = model1.predict(points)
+        ellip = COV(points, p)
         
-        data = data.copy()
-        n = data.shape[1]
-        data['cov_pred'] = pred1
+        pred = ellip.contains(points)
+        pred[pred == -1] = 0 
         
-        new_points = (
-            data.query('cov_pred == 1')[['PC1', 'PC2']]
-            .to_numpy()
-        )
+        new_points = points[pred.astype(bool)]
+        
+        self.data['COV_pred'] = pred
 
         self.convex_hull = ConvexHull(new_points)
         
-        #H-representation: Ax <= b
-        self.A = self.convex_hull.equations[:,:n]
-        self.b = -self.convex_hull.equations[:,n]
+        # H-representation: Ax <= b
+        self.A = self.convex_hull.equations[:,:d]
+        self.b = -self.convex_hull.equations[:,d]
         
         # V-representation
         self.vertices = new_points[self.convex_hull.vertices]
         
-        
-        self.data = data
+        # get Volume        
         self.volume = self.convex_hull.volume
+
+    def mcd(self, 
+            p = 0.95, 
+            list_var : list[str] = None) -> None:
         
+        
+        # fit model
+        points = self.data if list_var == None else self.data[list_var]
+        points = points.to_numpy()
+        d = points.shape[1]
+        
+        ellip = MCD(points, p)
+        
+        pred = ellip.contains(points)
+        pred[pred == -1] = 0 
+        
+        new_points = points[pred.astype(bool)]
+        
+        self.data['COV_pred'] = pred
+        
+
+        self.convex_hull = ConvexHull(new_points)
+        
+        # H-representation: Ax <= b
+        self.A = self.convex_hull.equations[:,:d]
+        self.b = -self.convex_hull.equations[:,d]
+        
+        # V-representation
+        self.vertices = new_points[self.convex_hull.vertices]
+        
+        # get Volume        
+        self.volume = self.convex_hull.volume
+ 
     
-    def contains(self, points: ArrayLike) -> List[bool]: 
+    def contains(self, points: ArrayLike) -> list[int]: 
         
         if isinstance(points,(np.ndarray, np.generic)):
             pass
         else: 
             points = points.to_numpy()
             
-        print('dejar como binario')
-        bool_list = [(np.sum(point*self.A, axis = 1) <= self.b).all() for point in points]
+        bool_list = np.array([
+            (np.sum(point*self.A, axis = 1) <= self.b).all() for point in points
+            ])
             
-        return bool_list
+        return bool_list.astype(int)
         
     
-    def plot(self, color = '#3ca3a3'): 
-        hull = self.convex_hull
-        points = (
-            self.
-            data.
-            query('cov_pred == 1')[['PC1', 'PC2']]
-            .to_numpy()
-        )
-        plt.scatter(self.data.PC1.to_numpy(), self.data.PC2.to_numpy(), c = 'k', s = 8)
-        
-        for simplex in hull.simplices:
-            plt.plot(points[simplex, 0], points[simplex, 1], 'k')
-        plt.fill(points[hull.vertices,0], 
-                 points[hull.vertices,1], 
-                 color, 
-                 alpha = 0.3)
-        plt.title("CHE-COV approach")
+    def plot(self, 
+    model : str = None, 
+    list_var: list[str] = None, 
+    color = '#3ca3a3'):
+        plot2D_convexhull(self, model, list_var, color)
+        plot3D_convexhull(self, model, list_var, color)
 
-def intersection(ches: List[CHE]) -> CHE:
+
+
+
+
+def intersection(ches: list[object]) -> CHE:
     for i, che in enumerate(ches): 
         if i == 0: 
             A = che.A
@@ -117,37 +150,12 @@ def intersection(ches: List[CHE]) -> CHE:
         
     vertices = compute_polytope_vertices(A, b)  
     vertices = np.array(vertices)
-    intersect = CHE()
-    intersect.ch(vertices)
+    intersect = CHE(vertices)
+    intersect.ch()
     
     return intersect
-    
-        
-    
-    # n_cols = intersection.shape[1] 
-    # solution = np.linalg.solve(intersection.T[:n_cols - 1].T, intersection.T[n_cols - 1].T)
-    
-    # # make the V-representation of the intersection
-    # mat = pcdd.Matrix(intersection)
-    # mat.rep_type = pcdd.RepType.INEQUALITY
-    # polyintersection = pcdd.Polyhedron(mat)
 
-    # # get the vertices; they are given in a matrix prepended by a column of ones
-    # vintersection = polyintersection.get_generators()
-
-    # # get rid of the column of ones
-    # ptsintersection = np.array(vintersection).T[1:].T
-
-    # # these are the vertices of the intersection; it remains to take
-    # # the convex hull
-    # ch = ConvexHull(ptsintersection)
-    # hull = CHE(ch)
-    # hull.vertices = ptsintersection
-    
-    # return hull
-
-
-def test(): 
+if __name__ == '__main__': 
     IN_FOLDER = 'data'
     d_fn = os.path.join(IN_FOLDER, 'D.csv')
     b_bar = pd.read_csv(d_fn, usecols = ['Bbar'])
@@ -155,27 +163,35 @@ def test():
     pcs_fn = os.path.join(IN_FOLDER, 'TablaPCs.csv')
     # Visual Python: Data Analysis > File
     pcs = pd.read_csv(pcs_fn, sep = ' ', 
-                      usecols = ['PC1', 'PC2'])
+                      usecols = ['PC1', 'PC2', 'PC3', 'PC4'])
 
     # convert dataframe to arrays
     data = pd.concat([b_bar, pcs], axis=1)
     data = data.query('Bbar == 1')
     
     
-    points1 = data[['PC1', 'PC2']].sample(100)
-    points2 = data[['PC1', 'PC2']].sample(100)
+    points1 = data[['PC1', 'PC2', 
+    'PC3'
+    ]].sample(100)
+    points2 = data[['PC1', 'PC2', 
+    'PC3'
+    ]].sample(100)
     
     
-    hull_1 = CHE()
-    hull_1.cov(points1, 0.8)
-    print(f'1 con 1 -> {hull_1.contains(points1).count(True)}/{len(points1)}')
+    hull_1 = CHE(points1)
+    hull_1.mcd(list_var = ['PC1', 'PC2', 
+    'PC3'
+    ])
+    print(f'1 con 1 -> {hull_1.contains(points1).sum()}/{len(points1)}')
     
-    hull_2 = CHE()
-    hull_2.cov(points2, 0.8)
+    hull_2 = CHE(points2)
+    hull_2.cov(list_var = ['PC1', 'PC2', 
+    'PC3'
+    ])
 
-    print(f'1 con 2 -> {hull_2.contains(points1).count(True)}/{len(points1)}')
-    print(f'2 con 1 -> {hull_1.contains(points2).count(True)}/{len(points2)}')
-    print(f'2 con 2 -> {hull_2.contains(points2).count(True)}/{len(points2)}')
+    print(f'1 con 2 -> {hull_2.contains(points1).sum()}/{len(points1)}')
+    print(f'2 con 1 -> {hull_1.contains(points2).sum()}/{len(points2)}')
+    print(f'2 con 2 -> {hull_2.contains(points2).sum()}/{len(points2)}')
     
     print(hull_1.volume != hull_2.volume)
     
@@ -187,16 +203,19 @@ def test():
     print(che3.volume <= hull_2.volume)
     print(che3.volume <= hull_2.volume)
     
-    print(f'3 con 1 -> {che3.contains(points1).count(True)}/{len(points1)}')
+    print(f'3 con 1 -> {che3.contains(points1).sum()}/{len(points1)}')
     # # print(f'1 con 3 -> {che1.contains(points2).sum()}/{len(points2)}')
-    print(f'3 con 2 -> {che3.contains(points2).count(True)}/{len(points2)}')
+    print(f'3 con 2 -> {che3.contains(points2).sum()}/{len(points2)}')
     
     plt.figure(1)
-    hull_1.plot()
-    hull_2.plot()
-    che3.plot(color = 'r')
-    # plt.scatter(data.PC1.to_numpy(), data.PC2.to_numpy(), c = 'black', s = 2, marker = '.')
+    hull_1.plot(model = 'COV', list_var = ['PC1', 'PC2', 'PC3'])
+    # hull_2.plot(model = 'COV', list_var = ['PC1', 'PC2']) 
+    # che3.plot(color = 'r', list_var = [0,1])
     plt.show()
 
-if __name__ == '__main__': 
-    test()
+    plot3D_multy_convexhulls([
+        hull_1, hull_2, 
+        # che3
+        ], list_var = ['PC1', 'PC2', 
+    'PC3'
+    ])
