@@ -7,7 +7,8 @@ Created on Tue Feb 14 17:10:54 2023
 """
 
 from pypoman.duality import compute_polytope_vertices
-from tools import COV, MCD, plot2D_convexhull, plot3D_convexhull, plot3D_multy_convexhulls
+from tools import COV, MCD
+from plot import plot_ndimensional_convexhull
 from scipy.spatial import ConvexHull
 import pandas as pd
 import numpy as np
@@ -20,11 +21,12 @@ from pprint import pprint
 class CHE:
     def __init__(self, 
                  data : pd.DataFrame | ArrayLike = None, 
-                 convex_hull = None):
+                 convex_hull: ConvexHull = None, 
+                 model: str = None):
         
         self.convex_hull = convex_hull
         self.data = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
-        
+        self.model = model
         if convex_hull: 
             d = convex_hull.vertices.shape[1]
             self.A = convex_hull.equations[:,:d]
@@ -67,7 +69,8 @@ class CHE:
         
         new_points = points[pred.astype(bool)]
         
-        self.data['COV_pred'] = pred
+        self.model = 'COV'
+        self.data['COV'] = pred
 
         self.convex_hull = ConvexHull(new_points)
         
@@ -98,9 +101,9 @@ class CHE:
         
         new_points = points[pred.astype(bool)]
         
-        self.data['COV_pred'] = pred
+        self.model = 'MCD'
+        self.data['MCD'] = pred
         
-
         self.convex_hull = ConvexHull(new_points)
         
         # H-representation: Ax <= b
@@ -128,15 +131,8 @@ class CHE:
         return bool_list.astype(int)
         
     
-    def plot(self, 
-    model : str = None, 
-    list_var: list[str] = None, 
-    color = '#3ca3a3'):
-        plot2D_convexhull(self, model, list_var, color)
-        plot3D_convexhull(self, model, list_var, color)
-
-
-
+    def plot(self): 
+        plot_ndimensional_convexhull(self)
 
 
 def intersection(ches: list[object]) -> CHE:
@@ -207,15 +203,13 @@ if __name__ == '__main__':
     # # print(f'1 con 3 -> {che1.contains(points2).sum()}/{len(points2)}')
     print(f'3 con 2 -> {che3.contains(points2).sum()}/{len(points2)}')
     
-    plt.figure(1)
-    hull_1.plot(model = 'COV', list_var = ['PC1', 'PC2', 'PC3'])
-    # hull_2.plot(model = 'COV', list_var = ['PC1', 'PC2']) 
-    # che3.plot(color = 'r', list_var = [0,1])
-    plt.show()
+    # plt.figure(1)
+    # hull_1.plot(model = 'COV', list_var = ['PC1', 'PC2', 'PC3'])
+    # # hull_2.plot(model = 'COV', list_var = ['PC1', 'PC2']) 
+    # # che3.plot(color = 'r', list_var = [0,1])
+    # plt.show()
 
-    plot3D_multy_convexhulls([
-        hull_1, hull_2, 
-        # che3
-        ], list_var = ['PC1', 'PC2', 
-    'PC3'
-    ])
+    points = data.loc[:, data.columns != 'Bbar']
+    che = CHE(points)
+    che.cov()
+    che.plot()

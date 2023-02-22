@@ -5,63 +5,103 @@ Created on Tue Feb 14 17:11:19 2023
 
 @author: rodrigo
 """
-import numpy as np
-import pyvista as pv
-import cdd as pcdd
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+import numpy as np
+import seaborn as sns
+from itertools import combinations
+import scienceplots
 
-# take one cube
-cube1 = pv.Cube()
-# take the same cube but translate it 
-cube2 = pv.Cube((0.5, 0.5, 0.5)) 
 
-# plot 
-pltr = pv.Plotter(window_size=[512,512])
-pltr.add_mesh(cube1)
-pltr.add_mesh(cube2)
-pltr.show()
+def add_headers(
+    fig,
+    columns,
+    *,
+    row_pad=1,
+    col_pad=5,
+    rotate_row_headers=True,
+    **text_kwargs
+):
+    # Based on https://stackoverflow.com/a/25814386
 
-# I don't know why, but there are duplicates in the PyVista cubes;
-# here are the vertices of each cube, without duplicates
-pts1 = cube1.points[0:8, :]
-pts2 = cube2.points[0:8, :]
+    axes = fig.get_axes()
+    col_headers = columns
+    row_headers = columns
 
-# make the V-representation of the first cube; you have to prepend
-# with a column of ones
-v1 = np.column_stack((np.ones(8), pts1))
-mat = pcdd.Matrix(v1, number_type='fraction') # use fractions if possible
-mat.rep_type = pcdd.RepType.GENERATOR
-poly1 = pcdd.Polyhedron(mat)
+    for ax in axes:
+        sbs = ax.get_subplotspec()
 
-# make the V-representation of the second cube; you have to prepend
-# with a column of ones
-v2 = np.column_stack((np.ones(8), pts2))
-mat = pcdd.Matrix(v2, number_type='fraction')
-mat.rep_type = pcdd.RepType.GENERATOR
-poly2 = pcdd.Polyhedron(mat)
+        # Putting headers on cols
+        if (col_headers is not None) and sbs.is_first_row():
+            ax.annotate(
+                col_headers[sbs.colspan.start],
+                xy=(0.5, 1),
+                xytext=(0, col_pad),
+                xycoords="axes fraction",
+                textcoords="offset points",
+                ha="center",
+                va="baseline",
+                **text_kwargs,
+            )
 
-# H-representation of the first cube
-h1 = poly1.get_inequalities()
+        # Putting headers on rows
+        print(sbs.is_last_col())
+        if (row_headers is not None) and sbs.is_last_col():
+            ax.yaxis.set_label_position("right")
+            ax.annotate(
+                row_headers[sbs.rowspan.start],
+                xy=(0, 0.5),
+                xytext=(-ax.yaxis.labelpad - row_pad, 0),
+                xycoords=ax.yaxis.label,
+                textcoords="offset points",
+                ha="right",
+                va="center",
+                rotation=rotate_row_headers * -90,
+                **text_kwargs,
+            )
 
-# H-representation of the second cube
-h2 = poly2.get_inequalities()
+def plot_ndimensional_convexhull(che: object): 
 
-# join the two sets of linear inequalities; this will give the intersection
-hintersection = np.vstack((h1, h2))
+    model = che.model
+    vertices = che.vertices
+    data = che.data.loc[:, che.data.columns != model]
+    dimensions = len(data.columns)
+    color = sns.color_palette('rocket', 1)
 
-# make the V-representation of the intersection
-mat = pcdd.Matrix(hintersection, number_type='fraction')
-mat.rep_type = pcdd.RepType.INEQUALITY
-polyintersection = pcdd.Polyhedron(mat)
+    plt.style.use(['science'])
+    fig = plt.figure(1, figsize = (dimensions * 3, dimensions * 3))
+    gs = gridspec.GridSpec(dimensions, dimensions)
+    gs.update(hspace = 0.2, wspace = 0.2)
 
-# get the vertices; they are given in a matrix prepended by a column of ones
-vintersection = polyintersection.get_generators()
+    for variable_1, variable_2 in combinations(data.columns, 2):
+        print(variable_1, variable_2) 
+        i = data.columns.get_loc(variable_1)
+        j = data.columns.get_loc(variable_2)
+        subplot = fig.add_subplot(gs[i, j]) #, sharey = 'row', sharex = 'col')
+        x = data[variable_1]
+        y = data[variable_2]
+        plt.scatter(x, y, c = color, s = 8)
+        
+        points = vertices.T[[i,j]].T
 
-# get rid of the column of ones
-ptsintersection = np.array([
-    vintersection[i][1:4] for i in range(8)    
-])
+        convex_hull = ConvexHull(points)
 
-# these are the vertices of the intersection; it remains to take
-# the convex hull
-hull_1 = ConvexHull(ptsintersection)
+        for simplex in convex_hull.simplices:
+            plt.plot(points[simplex, 0], points[simplex, 1], 'k')
+        plt.fill(points[convex_hull.vertices,0], 
+                points[convex_hull.vertices,1], 
+                color, 
+                alpha = 0.3)
+
+    add_headers(fig, data.columns) 
+    plt.show()
+
+
+def plot3D_convexhulls(che_list: list[object]): 
+    colors = sns.color_palette('rocket', len(che_list))
+
+
+
+
+
