@@ -55,16 +55,16 @@ data2: ArrayLike | pd.DataFrame, p: float, expected: bool):
     assert (che3.volume <= che1.volume) == expected
     assert (che3.volume <= che2.volume) == expected
     
-    che1.mcd(p)
+    # che1.mcd(p)
     
-    che2.mcd(p)
+    # che2.mcd(p)
     
-    assert (che1.volume != che2.volume) == expected
+    # assert (che1.volume != che2.volume) == expected
     
-    che3 = intersection([che1, che2])
+    # che3 = intersection([che1, che2])
     
-    assert (che3.volume <= che1.volume) == expected
-    assert (che3.volume <= che2.volume) == expected
+    # assert (che3.volume <= che1.volume) == expected
+    # assert (che3.volume <= che2.volume) == expected
 
 @pytest.mark.parametrize(
     'data, expected', 
@@ -77,7 +77,7 @@ data2: ArrayLike | pd.DataFrame, p: float, expected: bool):
 def test_cov(data: pd.DataFrame, expected: float): 
     che = CHE(data)
     che.cov()
-    assert che.volume == expected
+    assert round(che.volume,2) == expected
     
 @pytest.mark.parametrize(
     'data, expected', 

@@ -41,6 +41,6 @@ def test_cov(data: ArrayLike | pd.DataFrame, expected: float):
      ])
 def test_mcd(data: ArrayLike | pd.DataFrame, expected: float): 
     A, c = mcd(data)
-    volume = round (vol_ellipsoid(A), 2)
+    volume = round(vol_ellipsoid(A), 2)
     
     assert volume == expected

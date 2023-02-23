@@ -20,7 +20,7 @@ def cov(X: ArrayLike, p: float = 0.95):
     r = chi2.ppf(p, d)
     
     cov1 = np.cov(X.T)
-    c = np.mean(X, axis=0)/r
+    c = np.mean(X, axis=0)
     
     A = np.linalg.inv(cov1)/r
     
@@ -143,7 +143,7 @@ def mcd(X: ArrayLike, p: float = 0.95):
     r = chi2.ppf(p, d)
     
     A = np.linalg.inv(mod.covariance_)/r
-    c = mod.location_/r
+    c = mod.location_
     
     return A, c 
 
