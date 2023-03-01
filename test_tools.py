@@ -1,7 +1,7 @@
 import pytest 
 import os
 import pandas as pd 
-from tools import * 
+from tools import EllipticEnvelope
 from numpy.typing import ArrayLike 
 
 IN_FOLDER = 'data'
@@ -18,29 +18,19 @@ data = pd.concat([b_bar, pcs], axis=1)
 
 
 @pytest.mark.parametrize(
-    'data, expected', 
+    'data, model, expected', 
     [
-     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3']], 132.8), 
-     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 592.24),
-     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3']], 109.2), 
-     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 513.09)
+     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3']], 'COV', 132.8), 
+     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 'COV', 592.24),
+     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3']], 'COV', 109.2), 
+     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 'COV', 513.09), 
+     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3']], 'MCD', 119.03), 
+     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 'MCD', 349.94),
+     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3']], 'MCD', 70.71), 
+     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 'MCD', 167.09)
      ])
-def test_cov(data: ArrayLike | pd.DataFrame, expected: float): 
-    A, c = cov(data)
-    volume = round (vol_ellipsoid(A), 2)
-    
-    assert volume == expected
-
-@pytest.mark.parametrize(
-    'data, expected', 
-    [
-     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3']], 119.03), 
-     (data.query('Bbar == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 349.94),
-     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3']], 70.71), 
-     (data.query('Eisa == 1')[['PC1', 'PC2', 'PC3', 'PC4']], 167.09)
-     ])
-def test_mcd(data: ArrayLike | pd.DataFrame, expected: float): 
-    A, c = mcd(data)
-    volume = round(vol_ellipsoid(A), 2)
+def test_EllipticEnvelope(data: ArrayLike | pd.DataFrame, model: str, expected: float): 
+    volume = EllipticEnvelope(data, model).volume
+    volume = round(volume, 2)
     
     assert volume == expected
