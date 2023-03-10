@@ -6,7 +6,7 @@ Created on Tue Feb 14 17:11:19 2023
 @author: rodrigo
 """
 import matplotlib.gridspec as gridspec
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.colors import LightSource
@@ -230,6 +230,7 @@ def plot3D_convexhulls(che_list: list[object],
                 tri.set_alpha(0.2)
                 tri.set_edgecolor(None)
                 ax.add_collection3d(tri)
+                ax.add_collection(Line3DCollection([points[simplex]], colors = colors[i], linewidths = 0.1))
                 ax.set(label = che.species)
 
 
