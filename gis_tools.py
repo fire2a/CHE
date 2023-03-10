@@ -82,25 +82,7 @@ def raster_to_dataframe(rast_fn: rst.DatasetReader | str) -> pd.DataFrame:
     
 
 def main(): 
-    IN_FOLDER = os.path.join('data', 'Valpo')
-    
-    region_fn = os.path.join(IN_FOLDER, 'shape.shp')
-    region = gpd.read_file(region_fn)['geometry']
-    
-    mammals_fn = os.path.join(IN_FOLDER, 'mammals.shp')
-    mammals = gpd.read_file(mammals_fn)[['spp', 'geometry']]
-    
-    birds_fn = os.path.join(IN_FOLDER, 'birds.shp')
-    birds = gpd.read_file(birds_fn)[['spp', 'geometry']]
-    
-    obs = pd.concat([mammals, birds], ignore_index=True)
-    obs = obs.rename(columns = {'spp': 'species'})
-    del birds, mammals, birds_fn, mammals_fn
-    
-    grid_fn =  os.path.join(IN_FOLDER, 'grid.shp')      
-    grid = gpd.read_file(grid_fn)[['id','geometry']].head(10000)
-    
-    grid = obs_to_grid(grid, obs, write = True)
+    return None
     
     
 if __name__ == '__main__': 

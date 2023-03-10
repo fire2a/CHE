@@ -1,0 +1,1 @@
+MODELS = ['COV', 'MCD', 'MVE', 'MVEE']
