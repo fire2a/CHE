@@ -8,7 +8,8 @@ Created on Tue Feb 14 17:10:54 2023
 
 from pypoman.duality import compute_polytope_vertices
 from tools import EllipticEnvelope, binary_columns, get_environment_variables
-from plot import plot_ndimensional_convexhull, plot3D_convexhulls, MODELS
+from plot import plot_ndimensional_convexhull, plot3D_convexhulls
+from env_variables import MODELS
 from scipy.spatial import ConvexHull
 import pandas as pd
 import numpy as np
@@ -17,16 +18,39 @@ from numpy.typing import ArrayLike
 from functools import reduce
 import os
 
+# from collections import namedtuple
+# # Declaring namedtuple()
+# Student = namedtuple('Student', ['name', 'age', 'DOB'])
+ 
+# # Adding values
+# S = Student('Nandini', '19', '2541997')
 
 class CHE:
     def __init__(self, 
                  data : pd.DataFrame = None, 
                  convex_hull: ConvexHull = None):
+        """
+        
+
+        Parameters
+        ----------
+        data : pd.DataFrame, optional
+            DESCRIPTION. The default is None.
+        convex_hull : ConvexHull, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         
         self.convex_hull = convex_hull
         self.data = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
         self.model = None
         self.species = binary_columns(data)
+        env_var_bools, self.array = get_environment_variables(self)
+        self.environment_variables = data.columns[env_var_bools]
 
         if convex_hull: 
             d = convex_hull.vertices.shape[1]
@@ -37,7 +61,20 @@ class CHE:
             self.points = convex_hull.vertices
 
     def ch(self, list_var : list[str] = None): 
+        """
+        
 
+        Parameters
+        ----------
+        list_var : list[str], optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        variables_selected = np.intersect1d(self.environment_variables, list_var) if list_var != None else self.environment_variables
         _, points = get_environment_variables(self, list_var)
         
         d = points.shape[1]
@@ -59,6 +96,22 @@ class CHE:
     def cov(self, 
             p = 0.95, 
             list_var : list[str] = None) -> None:
+        """
+        
+
+        Parameters
+        ----------
+        p : TYPE, optional
+            DESCRIPTION. The default is 0.95.
+        list_var : list[str], optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None
+            DESCRIPTION.
+
+        """
         
 
         # fit model
@@ -92,6 +145,22 @@ class CHE:
     def mcd(self, 
             p = 0.95, 
             list_var : list[str] = None) -> None:
+        """
+        
+
+        Parameters
+        ----------
+        p : TYPE, optional
+            DESCRIPTION. The default is 0.95.
+        list_var : list[str], optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None
+            DESCRIPTION.
+
+        """
         
         
         # fit model
@@ -122,7 +191,21 @@ class CHE:
         self.volume = self.convex_hull.volume
  
     
-    def contains(self, points: ArrayLike) -> list[int]:           
+    def contains(self, points: ArrayLike) -> list[int]: 
+        """
+        
+
+        Parameters
+        ----------
+        points : ArrayLike
+            DESCRIPTION.
+
+        Returns
+        -------
+        list[int]
+            DESCRIPTION.
+
+        """          
             
         bool_list = np.array([
             (np.sum(point*self.A, axis = 1) <= self.b).all() for point in points
@@ -132,6 +215,22 @@ class CHE:
         
     
     def plot(self, d3: bool = False, ) -> None:
+        """
+        
+
+        Parameters
+        ----------
+        d3 : bool, optional
+            DESCRIPTION. The default is False.
+         : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None
+            DESCRIPTION.
+
+        """
         if d3: 
             plot3D_convexhulls([self])
         else: 
@@ -140,6 +239,20 @@ class CHE:
 
 
 def intersection(ches: list[object]) -> CHE:
+    """
+    
+
+    Parameters
+    ----------
+    ches : list[object]
+        DESCRIPTION.
+
+    Returns
+    -------
+    CHE
+        DESCRIPTION.
+
+    """
 
     variables = [che.data.columns for che in ches]
     variables = reduce(np.intersect1d, variables)
@@ -198,5 +311,6 @@ if __name__ == '__main__':
 
     Inte = intersection(ches)
 
-    plot3D_convexhulls([Bbar, Eisa])
-    plot3D_convexhulls([Inte])
+    print(f'environment variables: {Bbar.environment_variables}')
+    plot3D_convexhulls([Bbar, Eisa], normal_convexhull=True)
+    Inte.plot(d3=True)

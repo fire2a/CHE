@@ -34,10 +34,10 @@ actual_wd = os.getcwd()
 os.chdir(actual_wd)
 
 # Visual Python: Data Analysis > File
-b_bar = pd.read_csv('D.csv', usecols = ['Bbar'])
+b_bar = pd.read_csv('data/D.csv', usecols = ['Bbar'])
 
 # Visual Python: Data Analysis > File
-pcs = pd.read_csv('TablaPCs.csv', sep = ' ', 
+pcs = pd.read_csv('data/TablaPCs.csv', sep = ' ', 
                   usecols = ['PC1', 'PC2'])
 
 # convert dataframe to arrays
@@ -99,14 +99,11 @@ plt.annotate(
     bbox=bbox_args,
     arrowprops=arrow_args,
 )
-
+plt.show()
 
 plt.tick_params(labelbottom = False)
 plt.xlim((xx1.min(), xx1.max()))
 plt.ylim((yy1.min(), yy1.max()))
-# plt.ylabel("PC2")
-# plt.xlabel("PC1")
-# plt.show()
 
 
 xtr_subplot = fig.add_subplot(gs[1])

@@ -15,14 +15,14 @@ from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import random
-from plot import MODELS
+from env_variables import MODELS
 
 def binary_columns(df: pd.DataFrame) -> list[str]:
     bool_cols = [col for col in df 
              if np.isin(df[col].dropna().unique(), [0, 1]).all()]
     return bool_cols
 
-def get_environment_variables(che: object, variable_list: list[str]) -> tuple[list[str], ArrayLike]: 
+def get_environment_variables(che: object, variable_list: list[str] = None) -> tuple[list[str], ArrayLike]: 
     species = che.species
     data = che.data.copy()
     
@@ -87,7 +87,7 @@ class EllipticEnvelope:
 
 def pca(X: ArrayLike, n_components: int = 3) -> ArrayLike: 
     
-    return X
+    return X 
 
 if __name__ == '__main__': 
     print(__name__)
